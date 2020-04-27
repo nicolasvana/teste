@@ -1,0 +1,698 @@
+	// *************** Defining cell types
+
+begintemplate dummy_neuron
+
+	public soma, p_dend, nclist
+	create soma, p_dend
+  objectvar nclist
+
+	proc init() {
+		create soma, p_dend
+
+    nclist = new List()
+
+		soma {
+			L = 20
+			nseg = 1
+			diam = 20
+			insert hh
+		}
+
+		p_dend {
+			L = 1000
+			nseg = 1
+			diam = 5
+			insert hh
+		}
+
+
+		//Connecting all the sections together
+		//-- p_dend to Soma
+		connect p_dend(0), soma(0)
+		//-- Primary Dendrites to Soma
+	}
+endtemplate dummy_neuron
+
+// ******************** End of Template ********************
+
+begintemplate dummy_inhib
+
+	public soma, nclist
+	create soma
+  objectvar nclist
+
+	proc init() {
+		create soma
+
+    nclist = new List()
+
+		soma {
+			L = 20
+			nseg = 1
+			diam = 20
+			insert hh
+		}
+
+	}
+endtemplate dummy_inhib
+
+// ******************** End of Template ********************
+
+
+
+
+
+// ******************** Declaring cells
+
+k = 15
+num_neuron_neuron = k*k
+objref neuron[num_neuron_neuron]
+for i = 0, num_neuron_neuron-1 {
+	neuron[i] = new dummy_neuron()
+}
+
+
+num_neuron_inhib = 55
+objref inhib[num_neuron_inhib]
+for i = 0, num_neuron_inhib-1 {
+	inhib[i] = new dummy_inhib()
+}
+
+num_neuron = num_neuron_neuron
+
+
+
+
+// ******************* Setting up stimulus
+
+maxsyn = 100000
+objectvar syn[maxsyn]
+
+//neuron[0].p_dend syn[0] = new ExpSyn(0)
+objref estimulo[num_neuron_neuron + num_neuron_inhib]
+
+for i = 0, num_neuron_neuron + num_neuron_inhib-1{
+		estimulo[i] = new NetStim(0)
+		estimulo[i].interval = 1 //ms
+	  estimulo[i].number = 10000
+		estimulo[i].start = 0 //ms
+		estimulo[i].noise = 1
+}
+
+syn_counter = 0
+
+// teste com apenas 1 neuronio recebendo estimulo externo
+/*
+neuron[113].p_dend syn[syn_counter] = new ExpSyn(0)
+ns = neuron[113].nclist.append(new NetCon(estimulo[0], syn[syn_counter], -20, 1, 0.01))
+syn_counter += 1
+*/
+// todos os excit recebem estimulos externos
+
+for i = 0, num_neuron_neuron-1{
+	neuron[i].p_dend syn[syn_counter] = new ExpSyn(0)
+	//syn[syn_counter].tau1 =  1 //ms
+	//syn[syn_counter].tau2 =  3 //ms
+	ns = neuron[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.035)) //0.03075
+	syn_counter += 1
+}
+
+
+// todos os inhib recebem estimulos externos
+/*
+for i = 0, num_neuron_inhib-1{
+	inhib[i].soma syn[syn_counter] = new ExpSyn(0)
+	ns = inhib[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.0001))
+	syn_counter += 1
+}*/
+
+
+
+
+
+// ****************** Network delays
+
+objref delay, delaym
+
+delaym = new Matrix(num_neuron_neuron, num_neuron_neuron, 1) // new Matrix(nrow, ncol, type)
+delay_por_aresta = 0.25 // ms
+max_delay = 0
+delay_upper_limit = 3 // ms
+delay = new Random()
+delay.uniform(delay_por_aresta, delay_upper_limit)
+
+for w = 0, num_neuron_neuron - 1 {
+	for i = 0, k-1 {
+		for j = 0, k-1 {
+			coluna_atual = w % k
+			linha_atual = (w - coluna_atual) / k
+			//print linha_atual
+			aresta_coluna = delay_por_aresta*abs(j - coluna_atual)
+			aresta_linha = delay_por_aresta*abs(i - linha_atual)
+			delaym.x[w][i*k+j] = sqrt(aresta_linha^2 + aresta_coluna^2)
+			if (max_delay < sqrt(aresta_linha^2 + aresta_coluna^2)){
+				max_delay = sqrt(aresta_linha^2 + aresta_coluna^2)
+			}
+		}
+	}
+}
+
+delaym = delaym.muls(delay_upper_limit/max_delay)
+
+// delaym.printf() // imprime a matrix de delays
+
+
+
+
+// ******************* synaptic connections ************************ //
+
+// Random connections
+
+objref r
+r = new Random()
+r.uniform(0,1)
+
+// neuron-neuron connection neuron[0]-neuron[1]
+
+// Synapse
+//neuron[1].p_dend syn[syn_counter] = new ExpSyn(0)
+//print delaym.getval(i,j)
+//neuron[0].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 1)) // tem que aleatorizar o delay e weight
+//syn_counter += 1
+
+// neuron-neuron connection neuron[0]-neuron[1]
+/*
+// Synapse
+neuron[112].p_dend syn[syn_counter] = new ExpSyn(0)
+print delaym.getval(i,j)
+neuron[113].soma neuron[112].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.025)) // tem que aleatorizar o delay e weight
+syn_counter += 1
+*/
+// neuron-neuron connection
+
+for i = 0, num_neuron_neuron-1 {
+	for j = 0, num_neuron_neuron-1 {
+    if (r.repick() < 0.05){
+			// Synapse
+      neuron[j].p_dend syn[syn_counter] = new ExpSyn(0)
+			//print delaym.getval(i,j)
+      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.133017)) //0.109 tem que aleatorizar o delay e weight
+      syn_counter += 1
+    }
+  }
+}
+
+// neuron-inhib connection
+
+for i = 0, num_neuron_neuron-1 {
+	for j = 0, num_neuron_inhib-1 {
+    if (r.repick() < 0.1){
+      inhib[j].soma syn[syn_counter] = new ExpSyn(0)
+      neuron[i].soma inhib[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delay.repick(), 0.005)) //0.005 tem que aleatorizar o delay e weight
+      syn_counter += 1
+    }
+  }
+}
+
+
+// inhib-neuron connection
+
+for i = 0, num_neuron_inhib-1 {
+	for j = 0, num_neuron_neuron-1 {
+    if (r.repick() < 0.1){
+      neuron[j].p_dend syn[syn_counter] = new Exp2Syn(0)
+			syn[syn_counter].tau1 = 20 //ms
+			syn[syn_counter].tau2 = 50 //ms
+      inhib[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delay.repick(), -0.0002)) // tem que aleatorizar o delay e weight
+      syn_counter += 1
+    }
+  }
+}
+
+
+// inhib-inhib connection
+/*
+for i = 0, num_neuron_inhib-1 {
+	for j = 0, num_neuron_inhib-1 {
+    if (r.repick() < 0.1){
+      inhib[j].soma syn[syn_counter] = new Exp2Syn(0)
+      inhib[i].soma inhib[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, 1, -0.001)) // tem que aleatorizar o delay e weight
+      syn_counter += 1
+    }
+  }
+}
+*/
+
+// ******************************** Raster plot trackers ***************************** //
+
+// Prepare to record spike trains
+
+objref netcon, vec, spikes, nil // nil is just a handy alias for NULLobject
+spikes = new List()
+
+
+for i = 0, num_neuron_neuron-1 {
+		// Raster
+		vec = new Vector()
+		neuron[i].soma netcon = new NetCon(&v(1), nil, -20, 0, 1)
+		netcon.record(vec)  // vec will record the firing times
+		spikes.append(vec)  // add vec to the list of vectors that record firing times
+}
+
+for i = 0, num_neuron_inhib-1 {
+		// Raster
+		vec = new Vector()
+		inhib[i].soma netcon = new NetCon(&v(1), nil, -20, 0, 1)
+		netcon.record(vec)  // vec will record the firing times
+		spikes.append(vec)  // add vec to the list of vectors that record firing times
+}
+
+
+// ******************************** extracel ***************************** //
+
+objref slist[num_neuron_neuron], seclist[num_neuron_neuron*2]
+objref list_temp[num_neuron_neuron]
+objref gmat, cmat, bvec, e, xl, layer, sl, lm
+
+//Define
+RATIO_ra_by_re = 0.01
+Re = Ra/RATIO_ra_by_re	// Ohm.cm
+xraxial_value = Re*1e-6/(PI*((diam/2)^2)*1e-8)	// MOhm/cm
+
+Re_Ohm = Re*1e-6*L*1e-4/(PI*((diam/2)^2)*1e-8)	// MOhm
+rlink = Re_Ohm/nseg					// MOhm
+glink = 1000/rlink 					//nS 1000/rlink <-- original do paper
+ge_value = (glink*0.1)/area(0.9999)	// S/cm2
+
+proc setExtra() {
+
+// versao original (nao tem terra)
+	/*forall {
+		insert extracellular
+		xc[0] = 0
+		xc[1] = 0
+
+		xg[0] = 1e-9	// Infinite Resistance
+		xg[1] = 1e-9	// Infinite Resistance
+
+		xraxial[0] = xraxial_value	// MOhm/cm
+		xraxial[1] = 1e9  // Infinite Resistance
+	}
+	*/
+
+// minha versao (neuronios das arestas conectadas no terra)
+
+for i = 0, num_neuron-1 {
+	seclist[i] = new SectionList()
+}
+
+for i = 0, num_neuron-1 {
+	neuron[i].p_dend seclist[i].append()
+}
+
+for i = 0, num_neuron-1 {
+	neuron[i].soma seclist[i].append()
+}
+
+	for (i = 0 ; i < k ; i = i + 1){
+		for (j = 0 ; j < k ; j = j + 1){
+			//print i, j, k
+			if (i % (k - 1) == 0 || j % (k - 1) == 0 || i == 0 || j == 0){
+				forsec seclist[i*k + j]{
+				insert extracellular
+				xc[0] = 0
+				xc[1] = 0
+
+				xg[0] = 1e9	// Zero Resistance
+				xg[1] = 1e9	// Zero Resistance
+
+				xraxial[0] = xraxial_value	// MOhm/cm
+				xraxial[1] = 1e9  // Infinite Resistance
+				//print "Borda"
+				}
+			} else{
+				forsec seclist[i*k + j]{
+				insert extracellular
+				xc[0] = 0
+				xc[1] = 0
+
+				xg[0] = 1e-9	// Infinite Resistance
+				xg[1] = 1e-9	// Infinite Resistance
+
+				xraxial[0] = xraxial_value	// MOhm/cm
+				xraxial[1] = 1e9  // Infinite Resistance
+				//print "Core"
+				}
+			}
+		}
+	}
+
+
+	print "_________________________________________"
+	print "Extracellular Mechanism Inserted"
+	print "_________________________________________"
+}
+setExtra()
+
+proc setExtraLink() {
+
+for i = 0, num_neuron-1 {
+	slist[i] = new SectionList()
+}
+
+for i = 0, num_neuron-1 {
+	neuron[i].p_dend slist[i].append()
+}
+
+for i = 0, num_neuron-1 {
+	neuron[i].soma slist[i].append()
+}
+
+
+	nsegs = 0	// will contain total connected segs
+	forsec slist[0] {
+		nsegs += nseg
+	}
+	print "_________________________________________"
+	print "Total Connected Segments = ", num_neuron*nsegs
+	print "_________________________________________"
+
+
+	gmat = new Matrix(num_neuron*nsegs, num_neuron*nsegs, 2) // new Matrix(nrow, ncol, type)
+	cmat = new Matrix(num_neuron*nsegs, num_neuron*nsegs, 2) // new Matrix(nrow, ncol, type)
+	bvec = new Vector(num_neuron*nsegs)
+	xl = new Vector()
+	layer = new Vector(num_neuron*nsegs)
+	layer.fill(1)
+
+
+for i = 0, num_neuron-1 {
+	forsec slist[i] {
+		for (x, 0) {
+				xl.append(x)	// for neuron 3
+			}
+		}
+	}
+
+	e = new Vector(num_neuron*nsegs)
+	sl = new SectionList()
+
+	for i = 0, num_neuron-1 {
+		list_temp[i] = new List()
+	}
+
+for i = 0, num_neuron-1 {
+	forsec slist[i]{
+		for (x, 0) {
+			list_temp[i].append(new SectionRef())
+		}
+		slist[i].remove()
+	}
+}
+
+
+for i = 0, num_neuron-1 {
+	for j = 0, nsegs-1 {
+		list_temp[i].object(j).sec sl.append()
+	}
+}
+
+print sl, "aaaaaaaa"
+
+	ge = ge_value	// S/cm2
+
+
+sqrt2 = 1.41421356237
+
+// **************** building GMAT (defines conductances between extracel spaces)
+
+for (i=0; i<(nsegs); i=i+1){
+	for (j=0; j<k; j=j+1){
+		for (w=0; w<k; w=w+1){
+			cont = 0
+
+			if(w-1>=0 && j-1>=0) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j-1)*k + (w-1)] += -ge/sqrt2 // esquerda em cima
+				cont += -ge/sqrt2
+			}
+			if(w+1<k && j-1>=0) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j-1)*k + (w+1)] += -ge/sqrt2 // direita em cima
+				cont += -ge/sqrt2
+			}
+			if(w-1>=0 && j+1<k) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j+1)*k + (w-1)] += -ge/sqrt2 // esquerda em baixo
+				cont += -ge/sqrt2
+			}
+			if(w+1<k && j+1<k) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j+1)*k + (w+1)] += -ge/sqrt2 // direita em baixo
+				cont += -ge/sqrt2
+			}
+			if(j-1>=0) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j-1)*k + (w)] += -ge // Em cima
+				cont += -ge
+			}
+			if(j+1<k) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j+1)*k + (w)] += -ge // Em baixo
+				cont += -ge
+			}
+			if(w-1>=0) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j)*k + (w-1)] += -ge // A esquerda
+				cont += -ge
+			}
+			if(w+1<k) {
+				gmat.x[i*k*k + j*k + w][i*k*k + (j)*k + (w+1)] += -ge // a direita
+				cont += -ge
+			}
+
+			gmat.x[i*k*k + j*k + w][i*k*k + j*k + w] += -cont
+			//printf ("%d \n", i*k*k + j*k + w)
+		}
+	}
+}
+
+ // gmat = new Matrix(num_neuron*nsegs, num_neuron*nsegs, 2) // Se essa linha estiver descomentada, não existe acoplamento efático, senão, existe
+ // gmat.printf()
+ // print "\n", Ra
+
+	lm = new LinearMechanism(cmat, gmat, e, bvec, sl, xl, layer)
+
+	print "_________________________________________"
+	print "Extracellular Connected Via Link"
+	print "_________________________________________"
+}
+setExtraLink()
+
+// Function to print details to verify implementation
+proc printInfo() {
+	print "_________________________________________"
+	print "gmat = "
+	print gmat.printf()
+	print "_________________________________________"
+	print "cmat = "
+	print cmat.printf()
+	print "_________________________________________"
+	print "e = "
+	print e.printf()
+	print "_________________________________________"
+	print "bvec = "
+	print bvec.printf()
+	print "_________________________________________"
+	print "sl = "
+	print sl.printnames()
+	print "_________________________________________"
+	print "xl = "
+	print xl.printf()
+	print "_________________________________________"
+	print "layer = "
+	print layer.printf()
+	print "_________________________________________"
+}
+//printInfo()
+
+// **************************** Setting up the Simulation
+
+objref recv_soma, recv_pdend
+objref vecv_soma, vecv_pdend
+objref savdata, tempmatrix, graphPeak
+
+tstop = 500
+
+// ********************* Raster Plot Proc ******************* //
+
+objref graster, spikey
+graster = new Graph(0)
+graster.size(0,tstop,0, num_neuron_neuron + num_neuron_inhib)
+graster.view(0, 0, tstop, num_neuron_neuron + num_neuron_inhib, 300, 105, 300.48, 200.32)
+
+
+proc showraster() {
+  graster.erase_all()
+	spike_counter_excit = 0
+  spike_counter_inhib = 0
+  for i = 0, num_neuron_neuron + num_neuron_inhib - 1 {  // iterate over all cells
+    // number of elements in spikey must equal number of spikes fired by cell i
+    // value of each element must equal i+1
+    spikey = spikes.object(i).c
+    if (i < num_neuron_neuron){
+      spike_counter_excit += spikey.size()
+      }
+    if (i > num_neuron_neuron){
+      spike_counter_inhib += spikey.size()
+      }
+    spikey.fill(i+1)
+    spikey.mark(graster, spikes.object(i), "|", 6)
+  }
+  objref spikey  // we don't need this specific reference any more
+	print "Numero de Spikes excit = ", spike_counter_excit, "\n"
+  print "Numero de Spikes inhib = ", spike_counter_inhib, "\n"
+  print "Numero de Spikes total = ", spike_counter_excit + spike_counter_inhib, "\n"
+	print "Numero de Spikes medio esperado para 10 Hz = ", (num_neuron_neuron + num_neuron_inhib) * tstop / 100 , "\n"
+}
+
+// ************************ Run Simulation ******************** //
+/*
+objref stim
+neuron[13].soma stim = new IClamp(0.5)
+stim.del = 5	//ms
+stim.dur = 100	//ms
+stim.amp = 1.5	//nA 1.5
+*/
+
+proc runSim() { local flag, ctr
+	ctr = $1
+	print "ctr = ", ctr
+
+	//Run the simulation
+	run()
+
+	//Action potential identified by zero crossing
+	vecv_soma.x[ctr] = recv_soma.max() - v_init
+	vecv_pdend.x[ctr] = recv_pdend.max() - v_init
+}
+
+//Defining values of RATIO_ra_by_re
+objref vecRatio
+
+/*vecRatio = new Vector()
+vecRatio.append(10^-8.0)
+vecRatio.append(10^-7.5)
+vecRatio.append(10^-7.0)
+vecRatio.append(10^-6.5)
+vecRatio.append(10^-6.0)
+vecRatio.append(10^-5.5)
+vecRatio.append(10^-5.0)
+vecRatio.append(10^-4.75)
+vecRatio.append(10^-4.50)
+vecRatio.append(10^-4.25)
+vecRatio.append(10^-4.0)
+vecRatio.append(10^-3.75)
+vecRatio.append(10^-3.50)
+vecRatio.append(10^-3.25)
+vecRatio.append(10^-3.00)
+vecRatio.append(10^-2.75)
+vecRatio.append(10^-2.50)*/
+/*vecRatio.append(10^-2.25)
+vecRatio.append(10^-2.00)
+vecRatio.append(10^-1.75)
+vecRatio.append(10^-1.50)
+vecRatio.append(10^-1.25)
+vecRatio.append(10^-1.00)
+vecRatio.append(1)
+vecRatio.append(4)
+vecRatio.append(10)
+vecRatio.append(20)*/
+
+vecRatio = new Vector()
+//vecRatio.append(10^-4.0)
+//vecRatio.append(10^-3.00)
+vecRatio.append(10^-2.00)
+vecRatio.append(10^-1.00)
+vecRatio.append(1)
+
+
+proc recalcParams() {
+	Ra = 183 // Ohm.cm
+	Re = Ra/RATIO_ra_by_re	// Ohm.cm
+	xraxial_value = Re*1e-6/(PI*((diam/2)^2)*1e-8)	// MOhm/cm
+
+//Parametros novos
+	//Re_Ohm = Re*1e-6/(diam*1e-6*L*1e-6) // MOhm
+	//rlink = Re_Ohm
+	//glink = 1000/rlink
+
+//Parametros originais do paper (nao sei se tem sentido aqui)
+	Re_Ohm = Re*1e-6*L*1e-4/(PI*((diam/2)^2)*1e-8)	// MOhm
+	rlink = Re_Ohm/nseg					// MOhm
+	glink = 1000/rlink 					// nS
+	ge_value = (glink*0.1)/area(0.9999)	// S/cm2
+
+	setExtra()
+	setExtraLink()
+}
+
+proc runAll() { local i
+
+	vecv_soma = new Vector(vecRatio.size())
+	vecv_pdend = new Vector(vecRatio.size())
+
+	recv_soma = new Vector()
+	recv_soma.record(&neuron[2].soma.v(0.5))
+	recv_pdend = new Vector()
+	recv_pdend.record(&neuron[2].p_dend.v(0.5))
+
+	for (i=0; i<vecRatio.size(); i=i+1) {
+		RATIO_ra_by_re = vecRatio.x[i]
+		recalcParams()
+
+		print "\nRATIO_ra_by_re = ", RATIO_ra_by_re, "\n"
+		runSim(i)
+
+		// Show Raster
+		showraster()
+	}
+
+	savdata = new File()
+	savdata.wopen("PeakDepol.dat")
+
+	savdata.printf("RATIO_ra_by_re\tp_dend\tSoma\tPDend\tDDend0\tDDend1\n")
+
+	tempmatrix = new Matrix()
+	tempmatrix.resize(vecRatio.size(),4)
+	tempmatrix.setcol(0, vecRatio)
+	tempmatrix.setcol(2, vecv_soma)
+	tempmatrix.setcol(3, vecv_pdend)
+	tempmatrix.fprint(savdata, "%g\t")
+	savdata.close()
+
+	print "================================================"
+	print "Completed"
+	print "================================================"
+
+	//plotGraph()
+}
+
+proc plotGraph() { localobj vecRatioLog
+	vecRatioLog = new Vector()
+	for (i=0; i<vecRatio.size(); i=i+1) {
+		vecRatioLog.append(log(vecRatio.x[i]))
+	}
+
+	graphPeak = new Graph(0)
+	vecv_soma.plot(graphPeak, vecRatioLog, 3, 3)
+	vecv_pdend.plot(graphPeak, vecRatioLog, 4, 3)
+	graphPeak.color(3)
+	graphPeak.label("Soma")
+	graphPeak.color(4)
+	graphPeak.label("P_dend")
+	graphPeak.view(0,0,1,1,400,500,400,300)
+	graphPeak.exec_menu("View = plot")
+}
+
+xpanel("Run Simulation")
+	xvalue("RATIO_ra_by_re", "RATIO_ra_by_re")
+	xlabel("")
+	xlabel("Run Simulation")
+	xbutton("RunAll","runAll()")
+	xlabel("After RunAll runs a graph similar to fig 15 is displayed")
+	xlabel("")
+xpanel(50, 750)
