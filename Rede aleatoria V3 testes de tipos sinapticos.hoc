@@ -196,7 +196,7 @@ for i = 0, num_neuron_neuron-1 {
 			// Synapse
       neuron[j].p_dend syn[syn_counter] = new ExpSyn(0)
 			//print delaym.getval(i,j)
-      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.133017)) //0.109 tem que aleatorizar o delay e weight
+      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.133017)) //0.109 - 0.133017 tem que aleatorizar o delay e weight
       syn_counter += 1
     }
   }
@@ -336,10 +336,10 @@ for i = 0, num_neuron-1 {
 				xc[0] = 0
 				xc[1] = 0
 
-				xg[0] = 1e-9	// Infinite Resistance
-				xg[1] = 1e-9	// Infinite Resistance
+				xg[0] = 1e9	// Infinite Resistance
+				xg[1] = 1e9	// Infinite Resistance
 
-				xraxial[0] = xraxial_value	// MOhm/cm
+				xraxial[0] =  xraxial_value	// MOhm/cm
 				xraxial[1] = 1e9  // Infinite Resistance
 				//print "Core"
 				}
@@ -605,8 +605,8 @@ vecRatio.append(20)*/
 vecRatio = new Vector()
 //vecRatio.append(10^-4.0)
 //vecRatio.append(10^-3.00)
-vecRatio.append(10^-2.00)
-vecRatio.append(10^-1.00)
+//vecRatio.append(10^-2.25)
+//vecRatio.append(10^-1.00)
 vecRatio.append(1)
 
 
