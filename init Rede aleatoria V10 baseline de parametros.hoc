@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Rede aleatoria V10 baseline de parametros.hoc")
+xopen("session Rede aleatoria V10 baseline de parametros.ses")

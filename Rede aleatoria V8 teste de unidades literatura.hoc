@@ -1,0 +1,115 @@
+// *************** Defining cell types
+
+begintemplate dummy_neuron
+
+public soma, p_dend, nclist
+create soma, p_dend
+objectvar nclist
+
+proc init() {
+  create soma, p_dend
+
+  nclist = new List()
+
+  soma {
+    L = 20
+    nseg = 1
+    diam = 20
+    insert hh
+    Ra = 183 // Ohm*cm
+    print "valores para soma: Ra = ", Ra, ", ra = ", Ra*L*1e-4/(nseg*3.14*(diam*1e-4/2)^2), " Ohm"
+  }
+
+  p_dend {
+    L = 1000
+    nseg = 10
+    diam = 6
+    Ra = 183 // Ohm*cm
+    insert pas
+    //insert hh
+    print "valores para dendrito: Ra = ", Ra, ", ra = ", Ra*L*1e-4/(nseg*3.14*(diam*1e-4/2)^2), " Ohm"
+  }
+
+
+  //Connecting all the sections together
+  //-- p_dend to Soma
+  connect p_dend(0), soma(0)
+  //-- Primary Dendrites to Soma
+}
+endtemplate dummy_neuron
+
+// ******************** End of Template ********************
+
+// ******************** Declaring cells
+
+k = 1
+num_neuron_neuron = k*k
+objref neuron[num_neuron_neuron]
+for i = 0, num_neuron_neuron-1 {
+neuron[i] = new dummy_neuron()
+}
+
+num_neuron = num_neuron_neuron
+
+// ******************* Setting up stimulus
+
+maxsyn = 1
+objectvar syn[maxsyn]
+
+//neuron[0].p_dend syn[0] = new ExpSyn(0)
+objref estimulo[num_neuron_neuron]
+
+for i = 0, num_neuron_neuron-1{
+  estimulo[i] = new NetStim(0)
+  estimulo[i].interval = 1 //ms
+  estimulo[i].number = 10000
+  estimulo[i].start = 0 //ms
+  estimulo[i].noise = 1
+}
+
+syn_counter = 0
+
+for i = 0, num_neuron_neuron-1{
+neuron[i].p_dend syn[syn_counter] = new ExpSyn(0)
+//syn[syn_counter].tau1 =  1 //ms
+//syn[syn_counter].tau2 =  3 //ms
+ns = neuron[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.075)) //0.03075
+syn_counter += 1
+}
+
+// ******************************** extracel ***************************** //
+
+objref seclist[num_neuron_neuron*2]
+
+seclist[0] = new SectionList()
+neuron[0].p_dend seclist[0].append()
+neuron[0].soma seclist[0].append()
+
+forsec seclist[0]{
+		insert extracellular
+		xc[0] = 0
+		xc[1] = 0
+
+    //print "Ra = ", Ra
+    //xg[0] = 1e9
+    xg[0] = 1e-1*((nseg/L)^2)*(diam/(4*Ra*1e4))	// Conductance at vext[0] S/cm^2
+		xg[1] = 1e-9	// Conductance at vext[1]
+
+    //xraxial[0] = 20000
+		xraxial[0] =  50*((nseg/L)^2)*1e-6/(3.14*xg[0]*(diam)) // MOhm/cm
+		xraxial[1] = 1e9  // MOhm/cm
+
+    //e_extracellular = 3 // mV
+
+    print "xg[0] = ", xg[0], ", rterra = ", nseg/(xg[0]*L*6.28*(diam/2)), "Ohm"
+    print "xraxial[0] = ", xraxial[0], ", rea = ", 1e6*xraxial[0]*L/nseg, "Ohm"
+
+}
+
+print "_________________________________________"
+print "Extracellular Mechanism Inserted"
+print "_________________________________________"
+
+// **************************** Setting up the Simulation
+
+tstop = 500

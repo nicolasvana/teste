@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Rede aleatoria V7 teste de unidades.hoc")
+xopen("session Rede aleatoria V7 teste de unidades.ses")

@@ -15,14 +15,18 @@ begintemplate dummy_neuron
 			L = 20
 			nseg = 1
 			diam = 20
+			Ra = 183
 			insert hh
+			print "valores para soma: Ra = ", Ra, ", ra = ", Ra*L*1e-4/(nseg*3.14*(diam*1e-4/2)^2), " Ohm"
 		}
 
 		p_dend {
 			L = 1000
-			nseg = 1
+			nseg = 10
 			diam = 5
-			insert hh
+			Ra = 183
+			insert pas
+			print "valores para dendrito: Ra = ", Ra, ", ra = ", Ra*L*1e-4/(nseg*3.14*(diam*1e-4/2)^2), " Ohm"
 		}
 
 
@@ -64,7 +68,7 @@ endtemplate dummy_inhib
 
 // ******************** Declaring cells
 
-k = 15
+k = 20
 num_neuron_neuron = k*k
 objref neuron[num_neuron_neuron]
 for i = 0, num_neuron_neuron-1 {
@@ -72,7 +76,7 @@ for i = 0, num_neuron_neuron-1 {
 }
 
 
-num_neuron_inhib = 55
+num_neuron_inhib = 80
 objref inhib[num_neuron_inhib]
 for i = 0, num_neuron_inhib-1 {
 	inhib[i] = new dummy_inhib()
@@ -104,16 +108,16 @@ syn_counter = 0
 // teste com apenas 1 neuronio recebendo estimulo externo
 /*
 neuron[113].p_dend syn[syn_counter] = new ExpSyn(0)
-ns = neuron[113].nclist.append(new NetCon(estimulo[0], syn[syn_counter], -20, 1, 0.01))
+ns = neuron[113].nclist.append(new NetCon(estimulo[0], syn[syn_counter], -20, 1, 0.075))
 syn_counter += 1
 */
 // todos os excit recebem estimulos externos
 
 for i = 0, num_neuron_neuron-1{
 	neuron[i].p_dend syn[syn_counter] = new ExpSyn(0)
-	//syn[syn_counter].tau1 =  1 //ms
-	//syn[syn_counter].tau2 =  3 //ms
-	ns = neuron[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.035)) //0.03075
+	//syn[syn_counter].tau1 =  8 //ms
+	//syn[syn_counter].tau2 =  75 //ms
+	ns = neuron[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.0275))
 	syn_counter += 1
 }
 
@@ -185,18 +189,18 @@ r.uniform(0,1)
 // Synapse
 neuron[112].p_dend syn[syn_counter] = new ExpSyn(0)
 print delaym.getval(i,j)
-neuron[113].soma neuron[112].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.025)) // tem que aleatorizar o delay e weight
+neuron[113].soma neuron[112].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.005)) // tem que aleatorizar o delay e weight
 syn_counter += 1
 */
 // neuron-neuron connection
 
 for i = 0, num_neuron_neuron-1 {
 	for j = 0, num_neuron_neuron-1 {
-    if (r.repick() < 0.05){
+    if (r.repick() < 0.1){
 			// Synapse
       neuron[j].p_dend syn[syn_counter] = new ExpSyn(0)
 			//print delaym.getval(i,j)
-      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.133017)) //0.109 - 0.133017 tem que aleatorizar o delay e weight
+      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.05)) //0.0375 tem que aleatorizar o delay e weight
       syn_counter += 1
     }
   }
@@ -208,7 +212,7 @@ for i = 0, num_neuron_neuron-1 {
 	for j = 0, num_neuron_inhib-1 {
     if (r.repick() < 0.1){
       inhib[j].soma syn[syn_counter] = new ExpSyn(0)
-      neuron[i].soma inhib[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delay.repick(), 0.005)) //0.005 tem que aleatorizar o delay e weight
+      neuron[i].soma inhib[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delay.repick(), 0)) //0.005 tem que aleatorizar o delay e weight
       syn_counter += 1
     }
   }
@@ -221,8 +225,6 @@ for i = 0, num_neuron_inhib-1 {
 	for j = 0, num_neuron_neuron-1 {
     if (r.repick() < 0.1){
       neuron[j].p_dend syn[syn_counter] = new Exp2Syn(0)
-			syn[syn_counter].tau1 = 20 //ms
-			syn[syn_counter].tau2 = 50 //ms
       inhib[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delay.repick(), -0.0002)) // tem que aleatorizar o delay e weight
       syn_counter += 1
     }
@@ -270,21 +272,35 @@ for i = 0, num_neuron_inhib-1 {
 
 // ******************************** extracel ***************************** //
 
-objref slist[num_neuron_neuron], seclist[num_neuron_neuron*2]
+objref slist[num_neuron_neuron], seclist[num_neuron_neuron*11]
 objref list_temp[num_neuron_neuron]
 objref gmat, cmat, bvec, e, xl, layer, sl, lm
 
 //Define
 RATIO_ra_by_re = 0.01
 Re = Ra/RATIO_ra_by_re	// Ohm.cm
-xraxial_value = Re*1e-6/(PI*((diam/2)^2)*1e-8)	// MOhm/cm
+//xraxial_value = Re*1e-6/(PI*((diam/2)^2)*1e-8)	// MOhm/cm
 
-Re_Ohm = Re*1e-6*L*1e-4/(PI*((diam/2)^2)*1e-8)	// MOhm
-rlink = Re_Ohm/nseg					// MOhm
-glink = 1000/rlink 					//nS 1000/rlink <-- original do paper
-ge_value = (glink*0.1)/area(0.9999)	// S/cm2
+//Re_Ohm = Re*1e-6*L*1e-4/(PI*((diam/2)^2)*1e-8)	// MOhm
+//rlink = Re_Ohm/nseg					// MOhm
+//glink = 1000/rlink 					//nS
+//ge_value = (glink*0.1)/area(0.9999)	// S/cm2
 
 proc setExtra() {
+
+// versao original (nao tem terra)
+	/*forall {
+		insert extracellular
+		xc[0] = 0
+		xc[1] = 0
+
+		xg[0] = 1e-1*((nseg/L)^2)*(diam/(4*Ra*1e4))	// Infinite Resistance
+		xg[1] = 1e-9	// Infinite Resistance
+
+		xraxial[0] = xraxial_value	// MOhm/cm
+		xraxial[1] = 1e9  // Infinite Resistance
+	}
+	*/
 
 // minha versao (neuronios das arestas conectadas no terra)
 
@@ -303,16 +319,17 @@ for i = 0, num_neuron-1 {
 	for (i = 0 ; i < k ; i = i + 1){
 		for (j = 0 ; j < k ; j = j + 1){
 			//print i, j, k
+
 			if (i % (k - 1) == 0 || j % (k - 1) == 0 || i == 0 || j == 0){
 				forsec seclist[i*k + j]{
 				insert extracellular
 				xc[0] = 0
 				xc[1] = 0
 
-				xg[0] = 1e9	// Zero Resistance
+				xg[0] = 1e9 // 1e-1*((nseg/L)^2)*(diam/(4*Ra*1e4))	// Conductance at vext[0] S/cm^2
 				xg[1] = 1e9	// Zero Resistance
 
-				xraxial[0] = 1e9 // xraxial_value	// MOhm/cm
+				xraxial[0] =  50*((nseg/L)^2)*1e-6/(3.14*xg[0]*(diam)) // MOhm/cm
 				xraxial[1] = 1e9  // Infinite Resistance
 				//print "Borda"
 				}
@@ -322,10 +339,10 @@ for i = 0, num_neuron-1 {
 				xc[0] = 0
 				xc[1] = 0
 
-				xg[0] = 1e9	// Infinite Resistance
-				xg[1] = 1e9	// Infinite Resistance
+				xg[0] = 1e-1*((nseg/L)^2)*(diam/(4*Ra*1e4))	// Conductance at vext[0] S/cm^2
+				xg[1] = 1e-9	// Infinite Resistance
 
-				xraxial[0] = 1e9 //xraxial_value	// MOhm/cm
+				xraxial[0] =  50*((nseg/L)^2)*1e-6/(3.14*xg[0]*(diam)) // MOhm/cm
 				xraxial[1] = 1e9  // Infinite Resistance
 				//print "Core"
 				}
@@ -338,7 +355,7 @@ for i = 0, num_neuron-1 {
 	print "Extracellular Mechanism Inserted"
 	print "_________________________________________"
 }
-setExtra()
+//setExtra()
 
 proc setExtraLink() {
 
@@ -405,7 +422,8 @@ for i = 0, num_neuron-1 {
 
 print sl, "aaaaaaaa"
 
-	ge = ge_value	// S/cm2
+	ge = 1e-2	// S/cm2  [1e-1, 1e-3] <- range de valores do paper
+
 
 
 sqrt2 = 1.41421356237
@@ -466,7 +484,7 @@ for (i=0; i<(nsegs); i=i+1){
 	print "Extracellular Connected Via Link"
 	print "_________________________________________"
 }
-setExtraLink()
+//setExtraLink()
 
 // Function to print details to verify implementation
 proc printInfo() {
@@ -559,42 +577,8 @@ proc runSim() { local flag, ctr
 //Defining values of RATIO_ra_by_re
 objref vecRatio
 
-/*vecRatio = new Vector()
-vecRatio.append(10^-8.0)
-vecRatio.append(10^-7.5)
-vecRatio.append(10^-7.0)
-vecRatio.append(10^-6.5)
-vecRatio.append(10^-6.0)
-vecRatio.append(10^-5.5)
-vecRatio.append(10^-5.0)
-vecRatio.append(10^-4.75)
-vecRatio.append(10^-4.50)
-vecRatio.append(10^-4.25)
-vecRatio.append(10^-4.0)
-vecRatio.append(10^-3.75)
-vecRatio.append(10^-3.50)
-vecRatio.append(10^-3.25)
-vecRatio.append(10^-3.00)
-vecRatio.append(10^-2.75)
-vecRatio.append(10^-2.50)*/
-/*vecRatio.append(10^-2.25)
-vecRatio.append(10^-2.00)
-vecRatio.append(10^-1.75)
-vecRatio.append(10^-1.50)
-vecRatio.append(10^-1.25)
-vecRatio.append(10^-1.00)
-vecRatio.append(1)
-vecRatio.append(4)
-vecRatio.append(10)
-vecRatio.append(20)*/
-
 vecRatio = new Vector()
-vecRatio.append(10^-4.0)
-//vecRatio.append(10^-3.00)
-//vecRatio.append(10^-2.25)
-//vecRatio.append(10^-1.00)
-//vecRatio.append(1)
-
+vecRatio.append(10^-8.0)
 
 proc recalcParams() {
 	Ra = 183 // Ohm.cm
@@ -612,8 +596,8 @@ proc recalcParams() {
 	glink = 1000/rlink 					// nS
 	ge_value = (glink*0.1)/area(0.9999)	// S/cm2
 
-	setExtra()
-	setExtraLink()
+	//setExtra()
+	//setExtraLink()
 }
 
 proc runAll() { local i
@@ -682,5 +666,3 @@ xpanel("Run Simulation")
 	xlabel("After RunAll runs a graph similar to fig 15 is displayed")
 	xlabel("")
 xpanel(50, 750)
-
-//save_window_.printfile("Primeiro teste grafico.eps")

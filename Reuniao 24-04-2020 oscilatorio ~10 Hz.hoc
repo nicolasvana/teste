@@ -93,7 +93,7 @@ objref estimulo[num_neuron_neuron + num_neuron_inhib]
 
 for i = 0, num_neuron_neuron + num_neuron_inhib-1{
 		estimulo[i] = new NetStim(0)
-		estimulo[i].interval = 1 //ms
+		estimulo[i].interval = 2.5 //ms
 	  estimulo[i].number = 10000
 		estimulo[i].start = 0 //ms
 		estimulo[i].noise = 1
@@ -102,18 +102,18 @@ for i = 0, num_neuron_neuron + num_neuron_inhib-1{
 syn_counter = 0
 
 // teste com apenas 1 neuronio recebendo estimulo externo
-/*
+
 neuron[113].p_dend syn[syn_counter] = new ExpSyn(0)
-ns = neuron[113].nclist.append(new NetCon(estimulo[0], syn[syn_counter], -20, 1, 0.01))
+ns = neuron[113].nclist.append(new NetCon(estimulo[0], syn[syn_counter], -20, 1, 0.03))
 syn_counter += 1
-*/
+
 // todos os excit recebem estimulos externos
 
 for i = 0, num_neuron_neuron-1{
 	neuron[i].p_dend syn[syn_counter] = new ExpSyn(0)
-	//syn[syn_counter].tau1 =  1 //ms
-	//syn[syn_counter].tau2 =  3 //ms
-	ns = neuron[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.035)) //0.03075
+	//syn[syn_counter].tau1 =  8 //ms
+	//syn[syn_counter].tau2 =  75 //ms
+	ns = neuron[i].nclist.append(new NetCon(estimulo[i], syn[syn_counter], -20, 1, 0.05))
 	syn_counter += 1
 }
 
@@ -196,7 +196,7 @@ for i = 0, num_neuron_neuron-1 {
 			// Synapse
       neuron[j].p_dend syn[syn_counter] = new ExpSyn(0)
 			//print delaym.getval(i,j)
-      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.133017)) //0.109 - 0.133017 tem que aleatorizar o delay e weight
+      neuron[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delaym.getval(i,j), 0.109)) //0.1275 tem que aleatorizar o delay e weight
       syn_counter += 1
     }
   }
@@ -221,8 +221,6 @@ for i = 0, num_neuron_inhib-1 {
 	for j = 0, num_neuron_neuron-1 {
     if (r.repick() < 0.1){
       neuron[j].p_dend syn[syn_counter] = new Exp2Syn(0)
-			syn[syn_counter].tau1 = 20 //ms
-			syn[syn_counter].tau2 = 50 //ms
       inhib[i].soma neuron[j].nclist.append(new NetCon(&v(1), syn[syn_counter], -20, delay.repick(), -0.0002)) // tem que aleatorizar o delay e weight
       syn_counter += 1
     }
@@ -286,6 +284,20 @@ ge_value = (glink*0.1)/area(0.9999)	// S/cm2
 
 proc setExtra() {
 
+// versao original (nao tem terra)
+	/*forall {
+		insert extracellular
+		xc[0] = 0
+		xc[1] = 0
+
+		xg[0] = 1e-9	// Infinite Resistance
+		xg[1] = 1e-9	// Infinite Resistance
+
+		xraxial[0] = xraxial_value	// MOhm/cm
+		xraxial[1] = 1e9  // Infinite Resistance
+	}
+	*/
+
 // minha versao (neuronios das arestas conectadas no terra)
 
 for i = 0, num_neuron-1 {
@@ -312,7 +324,7 @@ for i = 0, num_neuron-1 {
 				xg[0] = 1e9	// Zero Resistance
 				xg[1] = 1e9	// Zero Resistance
 
-				xraxial[0] = 1e9 // xraxial_value	// MOhm/cm
+				xraxial[0] = xraxial_value	// MOhm/cm
 				xraxial[1] = 1e9  // Infinite Resistance
 				//print "Borda"
 				}
@@ -322,10 +334,10 @@ for i = 0, num_neuron-1 {
 				xc[0] = 0
 				xc[1] = 0
 
-				xg[0] = 1e9	// Infinite Resistance
-				xg[1] = 1e9	// Infinite Resistance
+				xg[0] = 1e-9	// Infinite Resistance
+				xg[1] = 1e-9	// Infinite Resistance
 
-				xraxial[0] = 1e9 //xraxial_value	// MOhm/cm
+				xraxial[0] = xraxial_value	// MOhm/cm
 				xraxial[1] = 1e9  // Infinite Resistance
 				//print "Core"
 				}
@@ -559,8 +571,8 @@ proc runSim() { local flag, ctr
 //Defining values of RATIO_ra_by_re
 objref vecRatio
 
-/*vecRatio = new Vector()
-vecRatio.append(10^-8.0)
+vecRatio = new Vector()
+/*vecRatio.append(10^-8.0)
 vecRatio.append(10^-7.5)
 vecRatio.append(10^-7.0)
 vecRatio.append(10^-6.5)
@@ -577,8 +589,8 @@ vecRatio.append(10^-3.25)
 vecRatio.append(10^-3.00)
 vecRatio.append(10^-2.75)
 vecRatio.append(10^-2.50)*/
-/*vecRatio.append(10^-2.25)
-vecRatio.append(10^-2.00)
+vecRatio.append(10^-2.25)
+/*vecRatio.append(10^-2.00)
 vecRatio.append(10^-1.75)
 vecRatio.append(10^-1.50)
 vecRatio.append(10^-1.25)
@@ -587,14 +599,6 @@ vecRatio.append(1)
 vecRatio.append(4)
 vecRatio.append(10)
 vecRatio.append(20)*/
-
-vecRatio = new Vector()
-vecRatio.append(10^-4.0)
-//vecRatio.append(10^-3.00)
-//vecRatio.append(10^-2.25)
-//vecRatio.append(10^-1.00)
-//vecRatio.append(1)
-
 
 proc recalcParams() {
 	Ra = 183 // Ohm.cm
@@ -682,5 +686,3 @@ xpanel("Run Simulation")
 	xlabel("After RunAll runs a graph similar to fig 15 is displayed")
 	xlabel("")
 xpanel(50, 750)
-
-//save_window_.printfile("Primeiro teste grafico.eps")

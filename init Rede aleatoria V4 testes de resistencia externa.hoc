@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Rede aleatoria V4 testes de resistencia externa.hoc")
+xopen("session Rede aleatoria V4 testes de resistencia externa.ses")

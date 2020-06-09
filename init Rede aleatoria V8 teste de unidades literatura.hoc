@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Rede aleatoria V8 teste de unidades literatura.hoc")
+xopen("session Rede aleatoria V8 teste de unidades literatura.ses")

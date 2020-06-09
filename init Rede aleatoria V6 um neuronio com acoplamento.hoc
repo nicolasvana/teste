@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Rede aleatoria V6 um neuronio com acoplamento.hoc")
+xopen("session Rede aleatoria V6 um neuronio com acoplamento.ses")

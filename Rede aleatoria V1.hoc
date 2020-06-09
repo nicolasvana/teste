@@ -1,0 +1,167 @@
+
+begintemplate dummy_excit
+
+	public soma, axon, nclist
+	create soma, axon
+  objectvar nclist
+
+	proc init() {
+		create soma, axon
+
+    nclist = new List()
+
+		soma {
+			L = 20
+			nseg = 1
+			diam = 20
+			insert hh
+		}
+
+		axon {
+			L = 1000
+			nseg = 10
+			diam = 5
+			insert hh
+		}
+
+
+		//Connecting all the sections together
+		//-- Axon to Soma
+		connect axon(1), soma(0)
+		//-- Primary Dendrites to Soma
+	}
+endtemplate dummy_excit
+
+// ******************** End of Template ********************
+
+begintemplate dummy_inhib
+
+	public soma, nclist
+	create soma
+  objectvar nclist
+
+	proc init() {
+		create soma
+
+    nclist = new List()
+
+		soma {
+			L = 20
+			nseg = 1
+			diam = 20
+			insert hh
+		}
+
+	}
+endtemplate dummy_inhib
+
+// ******************** End of Template ********************
+
+//Creating the dummy_excit
+
+num_neuron_excit = 80
+objref excit[num_neuron_excit]
+for i = 0, num_neuron_excit-1 {
+	excit[i] = new dummy_excit()
+}
+
+//Creating the dummy_inhib
+
+num_neuron_inhib = 20
+objref inhib[num_neuron_inhib]
+for i = 0, num_neuron_inhib-1 {
+	inhib[i] = new dummy_inhib()
+}
+
+//synaptic connections
+
+maxsyn = 10000
+objectvar syn[maxsyn]
+
+objref r, delay
+r = new Random()
+r.uniform(0,1)
+delay = new Random()
+delay.uniform(5,20)
+
+counter = 0
+
+// setting up stimulus
+
+//excit[0].axon syn[0] = new ExpSyn(0)
+objref estimulo[num_neuron_excit + num_neuron_inhib]
+for i = 0, num_neuron_excit + num_neuron_inhib-1{
+		estimulo[i] = new NetStim(1)
+		estimulo[i].interval = 100 //ms
+		estimulo[i].start = 0 //ms
+		estimulo[i].noise = 1
+}
+
+for i = 0, num_neuron_excit-1{
+	excit[i].axon syn[counter] = new ExpSyn(0)
+	ns = excit[i].nclist.append(new NetCon(estimulo[i], syn[counter], -20, 1, 0.5))
+	counter += 1
+}
+
+for i = 0, num_neuron_inhib-1{
+	inhib[i].soma syn[counter] = new ExpSyn(0)
+	ns = inhib[i].nclist.append(new NetCon(estimulo[i], syn[counter], -20, 1, 0.5))
+	counter += 1
+}
+
+// excit-excit connection
+
+for i = 0, num_neuron_excit-1 {
+	for j = 0, num_neuron_excit-1 {
+    if (r.repick() < 0.1){
+      excit[j].axon syn[counter] = new ExpSyn(0)
+      excit[i].soma excit[j].nclist.append(new NetCon(&v(1), syn[counter], -20, delay.repick(), 0.2)) // tem que aleatorizar o delay e weight
+      counter += 1
+    }
+  }
+}
+
+
+// excit-inhib connection
+
+for i = 0, num_neuron_excit-1 {
+	for j = 0, num_neuron_inhib-1 {
+    if (r.repick() < 0.1){
+      inhib[j].soma syn[counter] = new ExpSyn(0)
+      excit[i].soma inhib[j].nclist.append(new NetCon(&v(1), syn[counter], -20, delay.repick(), 0.2)) // tem que aleatorizar o delay e weight
+      counter += 1
+    }
+  }
+}
+
+// inhib-excit connection
+
+for i = 0, num_neuron_inhib-1 {
+	for j = 0, num_neuron_excit-1 {
+    if (r.repick() < 0.05){
+      excit[j].axon syn[counter] = new Exp2Syn(0)
+      inhib[i].soma excit[j].nclist.append(new NetCon(&v(1), syn[counter], -20, delay.repick(), -0.001)) // tem que aleatorizar o delay e weight
+      counter += 1
+    }
+  }
+}
+
+// inhib-inhib connection
+/*
+for i = 0, num_neuron_inhib-1 {
+	for j = 0, num_neuron_inhib-1 {
+    if (r.repick() < 0.1){
+      inhib[j].soma syn[counter] = new Exp2Syn(0)
+      inhib[i].soma inhib[j].nclist.append(new NetCon(&v(1), syn[counter], -20, 1, -0.01)) // tem que aleatorizar o delay e weight
+      counter += 1
+    }
+  }
+}
+*/
+/*
+objref stim
+excit[0].soma stim = new IClamp(0.5)
+stim.del = 5	//ms
+stim.dur = 1.5	//ms
+stim.amp = 1	//nA 1.5
+*/

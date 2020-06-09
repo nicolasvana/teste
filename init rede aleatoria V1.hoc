@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Rede aleatoria V1.hoc")
+xopen("code mine.ses")

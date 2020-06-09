@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("Reuniao 24-04-2020 oscilatorio ~40 Hz.hoc")
+xopen("session_aleatoria_com_extra_corrigido2.ses")

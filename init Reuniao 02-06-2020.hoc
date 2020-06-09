@@ -1,0 +1,3 @@
+load_file("nrngui.hoc")
+load_file("reuniao 02-06-2020.hoc")
+xopen("session Rede aleatoria V11 teste comportamento critico.ses")
